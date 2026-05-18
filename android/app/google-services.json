@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "753705658741",
+    "project_id": "gymfuel-8cb1b",
+    "storage_bucket": "gymfuel-8cb1b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:753705658741:android:beba2da2e2522439e58b3c",
+        "android_client_info": {
+          "package_name": "com.gymfuel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChjq6f87eojB68Lp8l_hHGE8-Ru_rclzg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

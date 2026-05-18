@@ -10,6 +10,7 @@ import { clearProfile, useProfileStore, setProfile } from '../../../store/reduce
 import { clearChat } from '../../../store/reducer/chat';
 import { authApi, profileApi, remindersApi } from '../../../services/backend';
 import { PhaseHistory, ReminderSettings, UserProfile } from '../../../types';
+import { decimalInput, isInRange, isNonEmptyText, onlyDigits } from '../../../utils/validation';
 
 const normalizePhaseHistory = (payload: unknown): PhaseHistory[] => {
   if (Array.isArray(payload)) {
@@ -183,20 +184,24 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
     const parsedHeight = parseFloat(heightInput);
     const parsedBudget = parseInt(budgetInput, 10);
 
-    if (isNaN(parsedAge) || parsedAge <= 0) {
-      Alert.alert('Invalid Age', 'Please enter a valid age.');
+    if (!isInRange(ageInput, 13, 100)) {
+      Alert.alert('Invalid Age', 'Enter an age between 13 and 100 years.');
       return;
     }
-    if (isNaN(parsedWeight) || parsedWeight <= 0) {
-      Alert.alert('Invalid Weight', 'Please enter a valid weight.');
+    if (!isInRange(weightInput, 25, 300)) {
+      Alert.alert('Invalid Weight', 'Enter weight between 25 and 300 kg.');
       return;
     }
-    if (isNaN(parsedHeight) || parsedHeight <= 0) {
-      Alert.alert('Invalid Height', 'Please enter a valid height.');
+    if (!isInRange(heightInput, 100, 250)) {
+      Alert.alert('Invalid Height', 'Enter height between 100 and 250 cm.');
       return;
     }
-    if (isNaN(parsedBudget) || parsedBudget <= 0) {
-      Alert.alert('Invalid Budget', 'Please enter a valid monthly budget.');
+    if (!isNonEmptyText(cityInput, 2, 100)) {
+      Alert.alert('Invalid City', 'Enter a valid city name.');
+      return;
+    }
+    if (!isInRange(budgetInput, 1000, 1000000)) {
+      Alert.alert('Invalid Budget', 'Enter a monthly budget between PKR 1,000 and PKR 1,000,000.');
       return;
     }
 
@@ -276,7 +281,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
                     keyboardType="numeric"
                     style={[globalStyles.input, styles.editTextInput]}
                     value={ageInput}
-                    onChangeText={setAgeInput}
+                    onChangeText={(value) => setAgeInput(onlyDigits(value).slice(0, 3))}
                   />
                 </View>
                 <View style={styles.editFormCol}>
@@ -284,7 +289,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
                   <TextInput
                     style={[globalStyles.input, styles.editTextInput]}
                     value={cityInput}
-                    onChangeText={setCityInput}
+                    onChangeText={(value) => setCityInput(value.slice(0, 100))}
                   />
                 </View>
               </View>
@@ -296,7 +301,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
                     keyboardType="numeric"
                     style={[globalStyles.input, styles.editTextInput]}
                     value={weightInput}
-                    onChangeText={setWeightInput}
+                    onChangeText={(value) => setWeightInput(decimalInput(value).slice(0, 6))}
                   />
                 </View>
                 <View style={styles.editFormCol}>
@@ -305,7 +310,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
                     keyboardType="numeric"
                     style={[globalStyles.input, styles.editTextInput]}
                     value={heightInput}
-                    onChangeText={setHeightInput}
+                    onChangeText={(value) => setHeightInput(decimalInput(value).slice(0, 6))}
                   />
                 </View>
               </View>
@@ -315,7 +320,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
                 keyboardType="numeric"
                 style={[globalStyles.input, styles.editTextInput]}
                 value={budgetInput}
-                onChangeText={setBudgetInput}
+                onChangeText={(value) => setBudgetInput(onlyDigits(value).slice(0, 7))}
               />
 
               <View style={styles.editActionRow}>

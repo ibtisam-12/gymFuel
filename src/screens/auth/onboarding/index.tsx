@@ -8,6 +8,7 @@ import { setOnboarded } from '../../../store/reducer/auth';
 import { setProfile } from '../../../store/reducer/profile';
 import { profileApi } from '../../../services/backend';
 import { UserProfile } from '../../../types';
+import { decimalInput, isInRange, isNonEmptyText, onlyDigits } from '../../../utils/validation';
 
 const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
   const { colors, globalStyles, isDark } = useTheme();
@@ -30,7 +31,44 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
   const [dietaryPref, setDietaryPref] = useState<'non_veg' | 'vegetarian' | 'pescatarian' | 'no_pref'>('no_pref');
   const [budget, setBudget] = useState('15000'); // Monthly food budget in PKR
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 7));
+  const validateStep = (targetStep = step) => {
+    if (targetStep === 1 && !isInRange(age, 13, 100)) {
+      Alert.alert('Invalid Age', 'Enter an age between 13 and 100 years.');
+      return false;
+    }
+    if (targetStep === 2) {
+      if (!isInRange(weight, 25, 300)) {
+        Alert.alert('Invalid Weight', 'Enter weight between 25 and 300 kg.');
+        return false;
+      }
+      if (!isInRange(height, 100, 250)) {
+        Alert.alert('Invalid Height', 'Enter height between 100 and 250 cm.');
+        return false;
+      }
+      if (bodyFat.trim() && !isInRange(bodyFat, 3, 70)) {
+        Alert.alert('Invalid Body Fat', 'Body fat percentage must be between 3 and 70.');
+        return false;
+      }
+    }
+    if (targetStep === 3 && !isNonEmptyText(city, 2, 100)) {
+      Alert.alert('Invalid City', 'Select or enter a valid city.');
+      return false;
+    }
+    if (targetStep === 4 && otherMedical.trim().length > 120) {
+      Alert.alert('Health Notes Too Long', 'Keep other health notes under 120 characters.');
+      return false;
+    }
+    if (targetStep === 7 && !isInRange(budget, 1000, 1000000)) {
+      Alert.alert('Invalid Budget', 'Enter a monthly food budget between PKR 1,000 and PKR 1,000,000.');
+      return false;
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (!validateStep()) return;
+    setStep((prev) => Math.min(prev + 1, 7));
+  };
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const toggleCondition = (cond: string) => {
@@ -46,12 +84,19 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
   };
 
   const handleCompleteOnboarding = async () => {
+    for (let currentStep = 1; currentStep <= 7; currentStep += 1) {
+      if (!validateStep(currentStep)) {
+        setStep(currentStep);
+        return;
+      }
+    }
+
     // Basic numerical validations
-    const parsedAge = parseInt(age, 10) || 24;
-    const parsedWeight = parseFloat(weight) || 70;
-    const parsedHeight = parseFloat(height) || 172;
+    const parsedAge = parseInt(age, 10);
+    const parsedWeight = parseFloat(weight);
+    const parsedHeight = parseFloat(height);
     const parsedBodyFat = parseFloat(bodyFat) || null;
-    const parsedBudget = parseInt(budget, 10) || 15000;
+    const parsedBudget = parseInt(budget, 10);
 
     // Build the medical conditions list, adding other text if present
     let finalMedical = [...medicalConditions];
@@ -153,7 +198,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 keyboardType="numeric"
                 style={globalStyles.input}
                 value={age}
-                onChangeText={setAge}
+                onChangeText={(value) => setAge(onlyDigits(value).slice(0, 3))}
               />
             </View>
           )}
@@ -171,7 +216,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 keyboardType="numeric"
                 style={globalStyles.input}
                 value={weight}
-                onChangeText={setWeight}
+                onChangeText={(value) => setWeight(decimalInput(value).slice(0, 6))}
               />
 
               <Text style={[styles.inputLabel, { color: colors.DARK_TEXT }]}>Height (cm)</Text>
@@ -181,7 +226,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 keyboardType="numeric"
                 style={globalStyles.input}
                 value={height}
-                onChangeText={setHeight}
+                onChangeText={(value) => setHeight(decimalInput(value).slice(0, 6))}
               />
 
               <Text style={[styles.inputLabel, { color: colors.DARK_TEXT }]}>Body Fat Percentage (%, Optional)</Text>
@@ -191,7 +236,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 keyboardType="numeric"
                 style={globalStyles.input}
                 value={bodyFat}
-                onChangeText={setBodyFat}
+                onChangeText={(value) => setBodyFat(decimalInput(value).slice(0, 5))}
               />
             </View>
           )}
@@ -261,7 +306,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
                 style={globalStyles.input}
                 value={otherMedical}
-                onChangeText={setOtherMedical}
+                onChangeText={(value) => setOtherMedical(value.slice(0, 120))}
               />
             </ScrollView>
           )}
@@ -394,7 +439,7 @@ const OnboardingScreen: React.FC<RootStackScreenProps<'Onboarding'>> = () => {
                 keyboardType="numeric"
                 style={globalStyles.input}
                 value={budget}
-                onChangeText={setBudget}
+                onChangeText={(value) => setBudget(onlyDigits(value).slice(0, 7))}
               />
               <Text style={styles.budgetHelper}>
                 Typical budget: PKR 10,000 to PKR 25,000 for standard gym-goers.

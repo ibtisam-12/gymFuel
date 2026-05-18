@@ -33,6 +33,7 @@ import {
   WaterLog,
   WaterSummary,
 } from '../../../types';
+import { decimalInput, isInRange, isNonEmptyText, onlyDigits } from '../../../utils/validation';
 
 const normalizeList = <T,>(payload: unknown): T[] => {
   if (Array.isArray(payload)) {
@@ -124,8 +125,8 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
 
   const handleLogWater = async () => {
     const amount = parseInt(waterAmount, 10);
-    if (!amount || amount <= 0) {
-      Alert.alert('Invalid Amount', 'Enter water in milliliters.');
+    if (!isInRange(waterAmount, 50, 5000)) {
+      Alert.alert('Invalid Amount', 'Enter water between 50 and 5,000 ml.');
       return;
     }
     const res = await trackersApi.logWater(amount);
@@ -150,8 +151,8 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
 
   const handleLogSteps = async () => {
     const steps = parseInt(stepCount, 10);
-    if (!steps || steps <= 0) {
-      Alert.alert('Invalid Steps', 'Enter a positive step count.');
+    if (!isInRange(stepCount, 1, 100000)) {
+      Alert.alert('Invalid Steps', 'Enter steps between 1 and 100,000.');
       return;
     }
     const res = await trackersApi.logSteps({ step_count: steps, source: 'manual' });
@@ -164,8 +165,28 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
   };
 
   const handleLogMeal = async () => {
-    if (!mealName.trim()) {
-      Alert.alert('Meal Required', 'Enter a meal name.');
+    if (!isNonEmptyText(mealName, 2, 80)) {
+      Alert.alert('Meal Required', 'Enter a meal name between 2 and 80 characters.');
+      return;
+    }
+    if (!isInRange(protein, 0, 300)) {
+      Alert.alert('Invalid Protein', 'Enter protein between 0 and 300g.');
+      return;
+    }
+    if (!isInRange(carbs, 0, 500)) {
+      Alert.alert('Invalid Carbs', 'Enter carbs between 0 and 500g.');
+      return;
+    }
+    if (!isInRange(fats, 0, 250)) {
+      Alert.alert('Invalid Fats', 'Enter fats between 0 and 250g.');
+      return;
+    }
+    if (!isInRange(calories, 1, 5000)) {
+      Alert.alert('Invalid Calories', 'Enter calories between 1 and 5,000 kcal.');
+      return;
+    }
+    if (!isInRange(cost, 0, 100000)) {
+      Alert.alert('Invalid Cost', 'Enter cost between PKR 0 and PKR 100,000.');
       return;
     }
     const res = await trackersApi.logMeal({
@@ -246,7 +267,7 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
               keyboardType="numeric"
               style={[inputStyle, styles.inlineInput]}
               value={waterAmount}
-              onChangeText={setWaterAmount}
+              onChangeText={(value) => setWaterAmount(onlyDigits(value).slice(0, 4))}
             />
             <TouchableOpacity onPress={handleLogWater} style={[styles.actionButton, { backgroundColor: colors.SUCCESS }]}>
               <Text style={styles.actionText}>Add ml</Text>
@@ -283,7 +304,7 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
               keyboardType="numeric"
               style={[inputStyle, styles.inlineInput]}
               value={stepCount}
-              onChangeText={setStepCount}
+              onChangeText={(value) => setStepCount(onlyDigits(value).slice(0, 6))}
             />
             <TouchableOpacity onPress={handleLogSteps} style={[styles.actionButton, { backgroundColor: colors.INFO }]}>
               <Text style={styles.actionText}>Sync</Text>
@@ -298,14 +319,14 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
             placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
             style={inputStyle}
             value={mealName}
-            onChangeText={setMealName}
+            onChangeText={(value) => setMealName(value.slice(0, 80))}
           />
           <View style={styles.metricGrid}>
-            <TextInput placeholder="Protein g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={protein} onChangeText={setProtein} />
-            <TextInput placeholder="Carbs g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={carbs} onChangeText={setCarbs} />
-            <TextInput placeholder="Fats g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={fats} onChangeText={setFats} />
-            <TextInput placeholder="Kcal" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={calories} onChangeText={setCalories} />
-            <TextInput placeholder="PKR" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={cost} onChangeText={setCost} />
+            <TextInput placeholder="Protein g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={protein} onChangeText={(value) => setProtein(decimalInput(value).slice(0, 6))} />
+            <TextInput placeholder="Carbs g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={carbs} onChangeText={(value) => setCarbs(decimalInput(value).slice(0, 6))} />
+            <TextInput placeholder="Fats g" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={fats} onChangeText={(value) => setFats(decimalInput(value).slice(0, 6))} />
+            <TextInput placeholder="Kcal" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={calories} onChangeText={(value) => setCalories(decimalInput(value).slice(0, 7))} />
+            <TextInput placeholder="PKR" placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'} keyboardType="numeric" style={[inputStyle, styles.metricInput]} value={cost} onChangeText={(value) => setCost(decimalInput(value).slice(0, 8))} />
           </View>
           <TouchableOpacity onPress={handleLogMeal} style={[styles.fullButton, { backgroundColor: colors.PRIMARY }]}>
             <Text style={styles.actionText}>Save Meal</Text>

@@ -6,13 +6,22 @@ import useTheme from '../../../styles/theme';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { authApi } from '../../../services/backend';
+import { isStrongPassword, isValidEmail, namePattern } from '../../../utils/validation';
 
 const SignUpSchema = Yup.object().shape({
-  fullName: Yup.string().min(3, 'B_FULLNAME_ATLEAST').max(50, 'B_FULLNAME_LESS_THAN').required('B_FULLNAME_REQUIRE'),
-  email: Yup.string().email('B_INVALID_EMAIL_ADDRESS').required('B_EMAIL_REQUIRED'),
-  password: Yup.string().min(8, 'B_PASSWORD_MIN_LENGTH').required('B_PASSWORD_REQUIRED'),
+  fullName: Yup.string()
+    .trim()
+    .matches(namePattern, 'Enter a valid full name.')
+    .required('Full name is required.'),
+  email: Yup.string()
+    .trim()
+    .test('valid-email', 'Enter a valid email address.', value => isValidEmail(value || ''))
+    .required('Email is required.'),
+  password: Yup.string()
+    .test('strong-password', 'Use at least 8 characters with letters and numbers.', value => isStrongPassword(value || ''))
+    .required('Password is required.'),
   confirmPassword: Yup.string()
-    .oneOf([Yup.ref('password')], 'B_PASSWORDS_DONT_MATCH')
+    .oneOf([Yup.ref('password')], 'Passwords do not match.')
     .required('Password confirmation is required'),
 });
 

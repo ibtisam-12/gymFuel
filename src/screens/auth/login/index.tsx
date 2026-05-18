@@ -9,10 +9,14 @@ import { useAppDispatch } from '../../../store/store';
 import { loginStart, loginSuccess, loginFailure } from '../../../store/reducer/auth';
 import { setProfile } from '../../../store/reducer/profile';
 import { authApi, profileApi } from '../../../services/backend';
+import { isValidEmail } from '../../../utils/validation';
 
 const LoginSchema = Yup.object().shape({
-  email: Yup.string().email('B_INVALID_EMAIL_ADDRESS').required('B_EMAIL_REQUIRED'),
-  password: Yup.string().min(6, 'B_PASSWORD_MIN_LENGTH').required('B_PASSWORD_REQUIRED'),
+  email: Yup.string()
+    .trim()
+    .test('valid-email', 'Enter a valid email address.', value => isValidEmail(value || ''))
+    .required('Email is required.'),
+  password: Yup.string().min(8, 'Password must be at least 8 characters.').required('Password is required.'),
 });
 
 const LoginScreen: React.FC<AuthStackScreen<'Login'>> = ({ navigation }) => {

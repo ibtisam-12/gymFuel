@@ -16,6 +16,7 @@ import { authApi, profileApi } from '../../../services/backend';
 import { useAppDispatch } from '../../../store/store';
 import { loginFailure, loginStart, loginSuccess } from '../../../store/reducer/auth';
 import { setProfile } from '../../../store/reducer/profile';
+import { isValidEmail, isValidOtp, onlyDigits } from '../../../utils/validation';
 
 const VerifyEmailScreen: React.FC<AuthStackScreen<'VerifyEmail'>> = ({ navigation, route }) => {
   const { colors, globalStyles, isDark } = useTheme();
@@ -54,8 +55,12 @@ const VerifyEmailScreen: React.FC<AuthStackScreen<'VerifyEmail'>> = ({ navigatio
   const handleVerify = async () => {
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedOtp = otp.trim();
-    if (!normalizedEmail || normalizedOtp.length !== 6) {
-      setError('Enter your email and 6-digit OTP.');
+    if (!isValidEmail(normalizedEmail)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (!isValidOtp(normalizedOtp)) {
+      setError('Enter the 6-digit OTP.');
       return;
     }
 
@@ -83,8 +88,8 @@ const VerifyEmailScreen: React.FC<AuthStackScreen<'VerifyEmail'>> = ({ navigatio
 
   const handleResend = async () => {
     const normalizedEmail = email.toLowerCase().trim();
-    if (!normalizedEmail) {
-      setError('Enter your email first.');
+    if (!isValidEmail(normalizedEmail)) {
+      setError('Enter a valid email address first.');
       return;
     }
 
@@ -124,7 +129,7 @@ const VerifyEmailScreen: React.FC<AuthStackScreen<'VerifyEmail'>> = ({ navigatio
             placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
             style={globalStyles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => setEmail(value.trim())}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -136,7 +141,7 @@ const VerifyEmailScreen: React.FC<AuthStackScreen<'VerifyEmail'>> = ({ navigatio
             placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
             style={globalStyles.input}
             value={otp}
-            onChangeText={setOtp}
+            onChangeText={(value) => setOtp(onlyDigits(value).slice(0, 6))}
             keyboardType="number-pad"
             maxLength={6}
           />

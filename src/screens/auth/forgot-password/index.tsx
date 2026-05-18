@@ -13,6 +13,7 @@ import { Text } from '../../../utils/elements';
 import { AuthStackScreen } from '../../../types/navigation.types';
 import useTheme from '../../../styles/theme';
 import { authApi } from '../../../services/backend';
+import { isStrongPassword, isValidEmail, isValidOtp, onlyDigits } from '../../../utils/validation';
 
 const ForgotPasswordScreen: React.FC<AuthStackScreen<'ForgotPassword'>> = ({ navigation, route }) => {
   const { colors, globalStyles, isDark } = useTheme();
@@ -28,8 +29,8 @@ const ForgotPasswordScreen: React.FC<AuthStackScreen<'ForgotPassword'>> = ({ nav
 
   const handleRequestOtp = async () => {
     const normalizedEmail = email.toLowerCase().trim();
-    if (!normalizedEmail) {
-      setError('Enter your email address.');
+    if (!isValidEmail(normalizedEmail)) {
+      setError('Enter a valid email address.');
       return;
     }
 
@@ -52,12 +53,16 @@ const ForgotPasswordScreen: React.FC<AuthStackScreen<'ForgotPassword'>> = ({ nav
 
   const handleResetPassword = async () => {
     const normalizedEmail = email.toLowerCase().trim();
-    if (!normalizedEmail || otp.trim().length !== 6) {
-      setError('Enter your email and 6-digit OTP.');
+    if (!isValidEmail(normalizedEmail)) {
+      setError('Enter a valid email address.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (!isValidOtp(otp)) {
+      setError('Enter the 6-digit OTP.');
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      setError('Use at least 8 characters with letters and numbers.');
       return;
     }
     if (password !== confirmPassword) {
@@ -111,7 +116,7 @@ const ForgotPasswordScreen: React.FC<AuthStackScreen<'ForgotPassword'>> = ({ nav
             placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
             style={globalStyles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => setEmail(value.trim())}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -125,7 +130,7 @@ const ForgotPasswordScreen: React.FC<AuthStackScreen<'ForgotPassword'>> = ({ nav
                 placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
                 style={globalStyles.input}
                 value={otp}
-                onChangeText={setOtp}
+                onChangeText={(value) => setOtp(onlyDigits(value).slice(0, 6))}
                 keyboardType="number-pad"
                 maxLength={6}
               />
