@@ -6,8 +6,6 @@ import useTheme from '../../../styles/theme';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { authApi } from '../../../services/backend';
-import { useAppDispatch } from '../../../store/store';
-import { loginSuccess } from '../../../store/reducer/auth';
 
 const SignUpSchema = Yup.object().shape({
   fullName: Yup.string().min(3, 'B_FULLNAME_ATLEAST').max(50, 'B_FULLNAME_LESS_THAN').required('B_FULLNAME_REQUIRE'),
@@ -20,7 +18,6 @@ const SignUpSchema = Yup.object().shape({
 
 const SignUpScreen: React.FC<AuthStackScreen<'SignUp'>> = ({ navigation }) => {
   const { colors, globalStyles, isDark } = useTheme();
-  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -41,33 +38,8 @@ const SignUpScreen: React.FC<AuthStackScreen<'SignUp'>> = ({ navigation }) => {
       });
 
       if (res.success) {
-        setSuccessMsg('Account created successfully! Logging you in automatically...');
-
-        if (res.data?.access) {
-          const accessToken = res.data.access;
-          const resMe = await authApi.me();
-
-          if (resMe.success && resMe.data) {
-            // Since this is a newly registered user, is_onboarded is always false.
-            // This immediately routes them to Gate 2 (Onboarding Form Submission Screens) in root.tsx!
-            dispatch(loginSuccess({
-              user: {
-                ...resMe.data,
-                is_onboarded: false,
-              },
-              token: accessToken,
-            }));
-
-            // Push registration should run only after a real FCM/APNs token is available.
-          } else {
-            // Fallback: Redirect to Login Screen if me endpoint fails
-            await authApi.logout();
-            navigation.navigate('Login');
-          }
-        } else {
-          // Fallback: Redirect to Login Screen if login fails
-          navigation.navigate('Login');
-        }
+        setSuccessMsg(res.data?.detail || 'Account created. Check your email for the OTP.');
+        navigation.navigate('VerifyEmail', { email: values.email.toLowerCase().trim() });
       } else {
         setRegError(res.error || 'Registration failed. Email might already exist.');
       }

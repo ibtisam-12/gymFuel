@@ -3,6 +3,7 @@ export interface User {
   full_name: string;
   email: string;
   is_onboarded: boolean;
+  is_email_verified?: boolean;
   created_at?: string;
   avatar?: string;
 }
@@ -84,9 +85,16 @@ export interface PhaseHistory {
 }
 
 export interface AuthTokenResponse {
-  access: string;
-  refresh: string;
+  access?: string;
+  refresh?: string;
   user?: User;
+  detail?: string;
+  email_verification_required?: boolean;
+}
+
+export interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
 }
 
 export interface DeviceToken {

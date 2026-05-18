@@ -1,7 +1,8 @@
+import { API_BASE_URL, WS_BASE_URL } from './api-config';
+
 const apiEndpoints = {
-  // 10.0.2.2 is the default Android emulator address mapping to your computer's localhost:8000
-  BASE_URL: 'http://10.0.2.2:8000/api/v1',
-  WS_BASE_URL: 'ws://10.0.2.2:8000/ws',
+  BASE_URL: API_BASE_URL,
+  WS_BASE_URL,
   
   // Auth
   LOGIN: '/auth/login/',
@@ -9,6 +10,10 @@ const apiEndpoints = {
   REFRESH: '/auth/refresh/',
   LOGOUT: '/auth/logout/',
   ME: '/auth/me/',
+  VERIFY_EMAIL_REQUEST: '/auth/verify-email/request/',
+  VERIFY_EMAIL: '/auth/verify-email/',
+  PASSWORD_RESET_REQUEST: '/auth/password-reset/request/',
+  PASSWORD_RESET: '/auth/password-reset/',
   
   // Profile
   PROFILE: '/profile/',

@@ -6,6 +6,7 @@ import api, {
 import apiEndpoints from '../constants/api-endpoints';
 import {
   AuthTokenResponse,
+  TokenRefreshResponse,
   BackendDailySummary,
   BackendDashboardData,
   ChatResponse,
@@ -47,11 +48,38 @@ export const authApi = {
   },
 
   refresh(refreshToken: string) {
-    return api.post<{ access: string }>(apiEndpoints.REFRESH, { refresh: refreshToken });
+    return api.post<TokenRefreshResponse>(apiEndpoints.REFRESH, {
+      refresh: refreshToken,
+    });
   },
 
   me() {
     return api.get<User>(apiEndpoints.ME);
+  },
+
+  requestEmailVerification(email: string) {
+    return api.post<{ detail: string }>(apiEndpoints.VERIFY_EMAIL_REQUEST, { email });
+  },
+
+  async verifyEmail(payload: { email: string; otp: string }) {
+    const res = await api.post<AuthTokenResponse>(apiEndpoints.VERIFY_EMAIL, payload);
+    if (res.success && res.data?.access) {
+      await persistAuthTokens(res.data.access, res.data.refresh);
+    }
+    return res;
+  },
+
+  requestPasswordReset(email: string) {
+    return api.post<{ detail: string }>(apiEndpoints.PASSWORD_RESET_REQUEST, { email });
+  },
+
+  resetPassword(payload: {
+    email: string;
+    otp: string;
+    password: string;
+    password2: string;
+  }) {
+    return api.post<{ detail: string }>(apiEndpoints.PASSWORD_RESET, payload);
   },
 
   updateMe(payload: Partial<Pick<User, 'email' | 'full_name'>>) {

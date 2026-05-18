@@ -10,9 +10,8 @@ import AppStackNavigator from './app-stack';
 import OnboardingScreen from '../screens/auth/onboarding';
 import {
   clearPersistedAuthToken,
-  getPersistedRefreshToken,
   loadPersistedAuthToken,
-  persistAuthTokens,
+  refreshAccessToken,
 } from '../utils/api';
 import { authApi, profileApi } from '../services/backend';
 
@@ -36,13 +35,12 @@ const RootNavigator = () => {
           let resMe = await authApi.me();
 
           if (!resMe.success && resMe.ResponseCode === 401) {
-            const refreshToken = await getPersistedRefreshToken();
-            if (refreshToken) {
-              const refreshRes = await authApi.refresh(refreshToken);
-              if (refreshRes.success && refreshRes.data?.access) {
-                activeToken = refreshRes.data.access;
-                await persistAuthTokens(activeToken, refreshToken);
-                resMe = await authApi.me();
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+              const retryMe = await authApi.me();
+              if (retryMe.success && retryMe.data) {
+                resMe = retryMe;
+                activeToken = (await loadPersistedAuthToken()) || activeToken;
               }
             }
           }

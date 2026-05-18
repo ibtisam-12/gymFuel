@@ -34,7 +34,7 @@ const LoginScreen: React.FC<AuthStackScreen<'Login'>> = ({ navigation }) => {
         password: values.password,
       });
 
-      if (res.success && res.data) {
+      if (res.success && res.data?.access) {
         const accessToken = res.data.access;
 
         // 3. Query the '/auth/me/' endpoint to retrieve the user's detailed account profile
@@ -72,6 +72,9 @@ const LoginScreen: React.FC<AuthStackScreen<'Login'>> = ({ navigation }) => {
         const err = res.error || 'Invalid credentials. Please try again.';
         setAuthError(err);
         dispatch(loginFailure(err));
+        if (err.toLowerCase().includes('verify')) {
+          navigation.navigate('VerifyEmail', { email: values.email.toLowerCase().trim() });
+        }
       }
     } catch (error: any) {
       const err = error.message || 'Something went wrong';
@@ -151,6 +154,13 @@ const LoginScreen: React.FC<AuthStackScreen<'Login'>> = ({ navigation }) => {
                 {errors.password && touched.password && (
                   <Text style={globalStyles.errorText}>{errors.password}</Text>
                 )}
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('ForgotPassword', { email: values.email.toLowerCase().trim() })}
+                  style={styles.forgotButton}
+                >
+                  <Text style={[styles.forgotText, { color: colors.PRIMARY }]}>Forgot your password?</Text>
+                </TouchableOpacity>
 
                 {/* Submit Button */}
                 <TouchableOpacity
@@ -242,6 +252,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 14,
+  },
+  forgotText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   footerRow: {
     flexDirection: 'row',

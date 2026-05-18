@@ -11,9 +11,10 @@ export type RootStackParamList = {
 
 // Parameter list for the Authentication stack
 export type AuthStackParamList = {
-  LanguageScreen: undefined;
   Login: undefined;
   SignUp: undefined;
+  VerifyEmail: { email?: string } | undefined;
+  ForgotPassword: { email?: string } | undefined;
 };
 
 // Parameter list for our Bottom Tab navigator

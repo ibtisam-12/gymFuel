@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../../utils/elements';
 import { BottomTabScreen } from '../../../types/navigation.types';
 import useTheme from '../../../styles/theme';
@@ -28,12 +29,27 @@ import {
   BackendDailySummary,
   MealLog,
   StepTodaySummary,
+  StepLog,
   WaterLog,
   WaterSummary,
 } from '../../../types';
 
+const normalizeList = <T,>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object' && Array.isArray((payload as any).results)) {
+    return (payload as any).results;
+  }
+
+  return [];
+};
+
 const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
   const { colors, globalStyles, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top + 12, 16);
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
   const [waterAmount, setWaterAmount] = useState('500');
@@ -65,22 +81,32 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
       ]);
 
       if (waterRes.success && waterRes.data) {
-        setLocalWaterLogs(waterRes.data);
-        dispatch(setWaterLogs(waterRes.data));
+        const normalizedWaterLogs = normalizeList<WaterLog>(waterRes.data);
+        setLocalWaterLogs(normalizedWaterLogs);
+        dispatch(setWaterLogs(normalizedWaterLogs));
+      } else {
+        setLocalWaterLogs([]);
+        dispatch(setWaterLogs([]));
       }
       if (waterSummaryRes.success && waterSummaryRes.data) {
         setWaterSummary(waterSummaryRes.data);
       }
       if (stepsRes.success && stepsRes.data) {
-        dispatch(setStepLogs(stepsRes.data));
+        dispatch(setStepLogs(normalizeList<StepLog>(stepsRes.data)));
+      } else {
+        dispatch(setStepLogs([]));
       }
       if (todayStepsRes.success && todayStepsRes.data) {
         setStepsSummary(todayStepsRes.data);
         dispatch(updateTodaySteps(todayStepsRes.data.total_steps));
       }
       if (mealsRes.success && mealsRes.data) {
-        setLocalMeals(mealsRes.data);
-        dispatch(setMeals(mealsRes.data));
+        const normalizedMeals = normalizeList<MealLog>(mealsRes.data);
+        setLocalMeals(normalizedMeals);
+        dispatch(setMeals(normalizedMeals));
+      } else {
+        setLocalMeals([]);
+        dispatch(setMeals([]));
       }
       if (mealSummaryRes.success && mealSummaryRes.data) {
         setMealSummary(mealSummaryRes.data);
@@ -182,7 +208,7 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.BACKGROUND }]}>
-      <View style={[styles.header, { borderBottomColor: colors.BORDER }]}>
+      <View style={[styles.header, { borderBottomColor: colors.BORDER, paddingTop: headerTopPadding }]}>
         <Text style={[styles.headerTitle, { color: colors.DARK_TEXT }]}>Daily Trackers</Text>
         <Text style={styles.headerSubtitle}>Hydration, steps, meals, and summaries from Django</Text>
       </View>
@@ -321,7 +347,6 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    paddingTop: 16,
     borderBottomWidth: 1,
     alignItems: 'center',
   },

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../../utils/elements';
 import { BottomTabScreen } from '../../../types/navigation.types';
 import useTheme from '../../../styles/theme';
@@ -12,6 +14,10 @@ import { ChatMessage } from '../../../types';
 
 const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }) => {
   const { colors, globalStyles, isDark } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const bottomInset = tabBarHeight + Math.max(insets.bottom, 8);
+  const headerTopPadding = Math.max(insets.top + 12, 16);
   const dispatch = useAppDispatch();
   const { messages, loading, sessionId } = useChatStore();
   const { dashboard } = useTrackerStore();
@@ -54,7 +60,7 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
         return;
       }
 
-      if (res.success && res.data?.message && res.data.success) {
+      if (res.success && res.data?.message && (res.data.success || res.data.message.ai_data)) {
         dispatch(addMessage(res.data.message));
         if (res.data.session_id) {
           dispatch(setSessionId(res.data.session_id));
@@ -129,21 +135,6 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
           onPress: async () => {
             await resetConversation();
             Alert.alert('Cleared', 'Conversation reset. Ready for a new session.');
-            return;
-            dispatch(setChatLoading(true));
-            try {
-              const res = await aiApi.clearMemory();
-              if (res.success) {
-                dispatch(clearChat());
-                Alert.alert('Cleared ✨', 'AI short-term memory has been completely cleared. Ready for a new session!');
-              } else {
-                Alert.alert('Clear Failed', res.error || 'Failed to clear session memory.');
-              }
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to connect to the backend.');
-            } finally {
-              dispatch(setChatLoading(false));
-            }
           },
         },
       ]
@@ -184,6 +175,11 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
     const isUser = item.role === 'user';
     const hasAiData = item.ai_data && typeof item.ai_data === 'object';
     const recipe = hasAiData ? item.ai_data : null;
+    const instructionsText = recipe?.instructions
+      ? Array.isArray(recipe.instructions)
+        ? recipe.instructions.join('\n')
+        : String(recipe.instructions)
+      : '';
 
     // Calculate budget status
     const remainingBudget = dashboard?.budget?.remaining || 0;
@@ -279,12 +275,12 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
               )}
 
               {/* Preparation Instructions */}
-              {recipe.instructions && (
+              {instructionsText ? (
                 <View style={styles.sectionBlock}>
                   <Text style={[styles.sectionHeading, { color: colors.DARK_TEXT }]}>Preparation Method</Text>
-                  <Text style={[styles.instructionsText, { color: colors.SUB_TEXT }]}>{recipe.instructions}</Text>
+                  <Text style={[styles.instructionsText, { color: colors.SUB_TEXT }]}>{instructionsText}</Text>
                 </View>
-              )}
+              ) : null}
 
               {/* PKR Cost and Action Button */}
               <View style={styles.actionRow}>
@@ -319,7 +315,7 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.BORDER }]}>
+      <View style={[styles.header, { borderBottomColor: colors.BORDER, paddingTop: headerTopPadding }]}>
         <View style={styles.headerTitleContainer}>
           <Text style={[styles.headerTitle, { color: colors.DARK_TEXT }]}>GymFuel AI Coach</Text>
           <Text style={styles.headerSubtitle}>Personalized LangChain diet recommender</Text>
@@ -339,7 +335,7 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
         data={messages}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomInset + 72 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -361,7 +357,16 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
       )}
 
       {/* Bottom Input Area */}
-      <View style={[styles.inputWrapper, { borderTopColor: colors.BORDER, backgroundColor: colors.CARD }]}>
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            borderTopColor: colors.BORDER,
+            backgroundColor: colors.CARD,
+            bottom: bottomInset,
+          },
+        ]}
+      >
         <TextInput
           placeholder="Ask for high-protein breakfast under Rs. 150..."
           placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
@@ -393,7 +398,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
   },
   headerTitleContainer: {
     flex: 1,

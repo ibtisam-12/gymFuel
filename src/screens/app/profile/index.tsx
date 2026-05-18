@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../../utils/elements';
 import { BottomTabScreen } from '../../../types/navigation.types';
 import useTheme from '../../../styles/theme';
@@ -8,10 +9,24 @@ import { logout } from '../../../store/reducer/auth';
 import { clearProfile, useProfileStore, setProfile } from '../../../store/reducer/profile';
 import { clearChat } from '../../../store/reducer/chat';
 import { authApi, profileApi, remindersApi } from '../../../services/backend';
-import { ReminderSettings, UserProfile } from '../../../types';
+import { PhaseHistory, ReminderSettings, UserProfile } from '../../../types';
+
+const normalizePhaseHistory = (payload: unknown): PhaseHistory[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object' && Array.isArray((payload as any).results)) {
+    return (payload as any).results;
+  }
+
+  return [];
+};
 
 const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
   const { colors, globalStyles, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top + 12, 16);
   const dispatch = useAppDispatch();
   const { data: profile } = useProfileStore();
 
@@ -21,7 +36,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
     notifications_enabled: true,
     meal_reminder_times: ['08:00', '13:00', '19:00'],
   });
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PhaseHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [updatingPhase, setUpdatingPhase] = useState<string | null>(null);
 
@@ -68,9 +83,12 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
     try {
       const res = await profileApi.phaseHistory();
       if (res.success && res.data) {
-        setHistory(res.data);
+        setHistory(normalizePhaseHistory(res.data));
+      } else {
+        setHistory([]);
       }
     } catch (err) {
+      setHistory([]);
       console.warn('Could not load phase history:', err);
     } finally {
       setLoadingHistory(false);
@@ -229,7 +247,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
   return (
     <View style={[styles.root, { backgroundColor: colors.BACKGROUND }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.BORDER }]}>
+      <View style={[styles.header, { borderBottomColor: colors.BORDER, paddingTop: headerTopPadding }]}>
         <Text style={[styles.headerTitle, { color: colors.DARK_TEXT }]}>Profile Settings</Text>
         <Text style={styles.headerSubtitle}>Verify credentials & active metrics</Text>
       </View>
@@ -551,7 +569,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
   },
   headerTitle: {
     fontSize: 18,

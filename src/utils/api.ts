@@ -9,9 +9,16 @@ const axiosInter = axios.create({
 });
 
 let authToken: string | null = null;
+let refreshInFlight: Promise<boolean> | null = null;
+let refreshBlocked = false;
 
 const TOKEN_STORAGE_KEY = 'gymfuel_auth_token';
 const REFRESH_TOKEN_STORAGE_KEY = 'gymfuel_refresh_token';
+
+export interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}
 
 /**
  * Persist the current auth token to device storage and keep the runtime variable in sync.
@@ -31,6 +38,7 @@ export const persistAuthTokens = async (
   refreshToken?: string | null,
 ): Promise<void> => {
   authToken = accessToken;
+  refreshBlocked = false;
   try {
     await AsyncStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
     if (refreshToken) {
@@ -73,12 +81,59 @@ export const loadPersistedAuthToken = async (): Promise<string | null> => {
  */
 export const clearPersistedAuthToken = async (): Promise<void> => {
   authToken = null;
+  refreshBlocked = true;
+  refreshInFlight = null;
   try {
     await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
     await AsyncStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   } catch (e) {
     console.warn('Failed to clear persisted auth token:', e);
   }
+};
+
+/**
+ * Refresh access token once — concurrent callers share the same in-flight request.
+ * Required because Django blacklists the old refresh token after rotation.
+ */
+export const refreshAccessToken = async (): Promise<boolean> => {
+  if (refreshBlocked) {
+    return false;
+  }
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = (async () => {
+    const refresh = await getPersistedRefreshToken();
+    if (!refresh) {
+      refreshBlocked = true;
+      return false;
+    }
+
+    try {
+      const response = await axiosInter.post<TokenRefreshResponse>(
+        apiEndpoints.REFRESH,
+        { refresh },
+        { headers: { 'X-Skip-Auth-Refresh': '1' } },
+      );
+      const access = response.data?.access;
+      if (!access) {
+        refreshBlocked = true;
+        await clearPersistedAuthToken();
+        return false;
+      }
+      await persistAuthTokens(access, response.data.refresh || refresh);
+      return true;
+    } catch {
+      refreshBlocked = true;
+      await clearPersistedAuthToken();
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 };
 
 /**
@@ -111,11 +166,14 @@ const caller = async <T>(
     ResponseCode: 0,
   };
 
+  const skipAuth = config?.headers?.['X-Skip-Auth-Refresh'] === '1';
+  const isRefreshUrl = url.includes('/auth/refresh');
+
   config = {
     ...config,
     headers: {
       ...config?.headers,
-      ...(authToken && { Authorization: `Bearer ${authToken}` }),
+      ...(authToken && !skipAuth && { Authorization: `Bearer ${authToken}` }),
     },
   };
 
@@ -131,7 +189,26 @@ const caller = async <T>(
     responseObject.ResponseCode = response.status;
   } catch (err: any) {
     const response = err?.response?.data;
-    
+    const status = err?.response?.status || 0;
+    const alreadyRetried = config?.headers?.['X-Retry-After-Refresh'] === '1';
+
+    const isAuthUrl = url.includes('/auth/login') || url.includes('/auth/register');
+
+    if (status === 401 && !skipAuth && !isRefreshUrl && !isAuthUrl && !alreadyRetried) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed && authToken) {
+        const retryConfig = {
+          ...config,
+          headers: {
+            ...config?.headers,
+            Authorization: `Bearer ${authToken}`,
+            'X-Retry-After-Refresh': '1',
+          },
+        };
+        return caller<T>(type, url, data, retryConfig);
+      }
+    }
+
     // Attempt to extract standard Django Rest Framework error responses
     let errorMessage = 'Something went wrong. Please check your connection.';
     if (response) {

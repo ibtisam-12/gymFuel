@@ -9,6 +9,7 @@ import { useTrackerStore } from '../../../store/reducer/tracker';
 import { useProfileStore } from '../../../store/reducer/profile';
 import { profileApi, trackersApi } from '../../../services/backend';
 import Svg, { Circle, Defs, LinearGradient, Stop, Path, Text as SvgText } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -143,6 +144,8 @@ const WeightTrendChart = ({ colors, globalStyles }: any) => {
 
 const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation }) => {
   const { colors, globalStyles, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollTopPadding = Math.max(insets.top + 16, 16);
   const dispatch = useAppDispatch();
   const { dashboard, loading } = useTrackerStore();
   const { data: profile } = useProfileStore();
@@ -269,7 +272,7 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
   return (
     <View style={[styles.rootContainer, { backgroundColor: colors.BACKGROUND }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: scrollTopPadding }]}
         refreshControl={
           <RefreshControl refreshing={loading || localLoading} onRefresh={fetchDashboard} tintColor={colors.PRIMARY} />
         }
@@ -284,6 +287,24 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
             <Text style={[styles.phaseText, { color: colors.PRIMARY }]}>{activePhase}</Text>
           </View>
         </View>
+
+        {/* AI Chat entry — primary way to open meal coach */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('AIChat')}
+          style={[globalStyles.card, styles.chatEntryCard, { borderColor: colors.PRIMARY + '40' }]}
+        >
+          <View style={[styles.chatEntryIcon, { backgroundColor: colors.PRIMARY + '18' }]}>
+            <Text style={styles.chatEntryEmoji}>🤖</Text>
+          </View>
+          <View style={styles.chatEntryText}>
+            <Text style={[styles.chatEntryTitle, { color: colors.DARK_TEXT }]}>AI Meal Coach Chat</Text>
+            <Text style={[styles.chatEntrySubtitle, { color: colors.SUB_TEXT }]}>
+              Tap to ask for Pakistani meals, macros, and PKR budget plans
+            </Text>
+          </View>
+          <Text style={[styles.chatEntryArrow, { color: colors.PRIMARY }]}>→</Text>
+        </TouchableOpacity>
 
         {/* Caloric Ring Summary Card */}
         <View style={[globalStyles.card, styles.ringCard]}>
@@ -555,6 +576,44 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 110,
+  },
+  chatEntryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  chatEntryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  chatEntryEmoji: {
+    fontSize: 24,
+  },
+  chatEntryText: {
+    flex: 1,
+  },
+  chatEntryTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  chatEntrySubtitle: {
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 17,
+    fontWeight: '500',
+  },
+  chatEntryArrow: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginLeft: 8,
   },
   header: {
     flexDirection: 'row',
