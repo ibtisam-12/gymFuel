@@ -9,6 +9,7 @@ import { logout } from '../../../store/reducer/auth';
 import { clearProfile, useProfileStore, setProfile } from '../../../store/reducer/profile';
 import { clearChat } from '../../../store/reducer/chat';
 import { authApi, profileApi, remindersApi } from '../../../services/backend';
+import { checkFcmHealth } from '../../../services/pushNotifications';
 import { PhaseHistory, ReminderSettings, UserProfile } from '../../../types';
 import { decimalInput, isInRange, isNonEmptyText, onlyDigits } from '../../../utils/validation';
 
@@ -40,6 +41,8 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
   const [history, setHistory] = useState<PhaseHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [updatingPhase, setUpdatingPhase] = useState<string | null>(null);
+  const [checkingFcm, setCheckingFcm] = useState(false);
+  const [fcmStatus, setFcmStatus] = useState<string | null>(null);
 
   // In-line Body Metrics Editor States
   const [isEditing, setIsEditing] = useState(false);
@@ -134,6 +137,24 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
     } catch (err: any) {
       setReminders(prevVal => ({ ...prevVal, water_reminder_interval_hours: prev }));
       Alert.alert('Error', err.message || 'Connection failure.');
+    }
+  };
+
+  const handleCheckFcm = async () => {
+    if (checkingFcm) return;
+    setCheckingFcm(true);
+    setFcmStatus(null);
+
+    try {
+      const result = await checkFcmHealth(false);
+      setFcmStatus(result.ok ? 'FCM ready' : result.message);
+      Alert.alert(result.ok ? 'FCM Ready' : 'FCM Check Failed', result.message);
+    } catch (err: any) {
+      const message = err.message || 'Could not complete FCM check.';
+      setFcmStatus(message);
+      Alert.alert('FCM Check Failed', message);
+    } finally {
+      setCheckingFcm(false);
     }
   };
 
@@ -472,6 +493,23 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
           <Text style={styles.cardDesc}>Toggles automated push notification pings to ensure you log your hydration split metrics on time.</Text>
           <View style={styles.separator} />
 
+          <TouchableOpacity
+            onPress={handleCheckFcm}
+            disabled={checkingFcm}
+            style={[styles.fcmCheckButton, { borderColor: colors.BORDER, opacity: checkingFcm ? 0.7 : 1 }]}
+          >
+            {checkingFcm ? (
+              <ActivityIndicator size="small" color={colors.PRIMARY} />
+            ) : (
+              <Text style={[styles.fcmCheckButtonText, { color: colors.DARK_TEXT }]}>Check FCM Status</Text>
+            )}
+          </TouchableOpacity>
+          {fcmStatus && (
+            <Text style={[styles.fcmStatusText, { color: fcmStatus === 'FCM ready' ? colors.SUCCESS : colors.PRIMARY }]}>
+              {fcmStatus}
+            </Text>
+          )}
+
           <Text style={styles.subHeadingLabel}>Water Log Interval (hours)</Text>
           <View style={styles.intervalRow}>
             {[1, 2, 3, 4].map((h) => {
@@ -511,7 +549,7 @@ const ProfileScreen: React.FC<BottomTabScreen<'Profile'>> = () => {
         {/* 📜 Goal Phase Transition History logs */}
         <View style={[globalStyles.card, styles.infoCard]}>
           <Text style={[styles.cardTitle, { color: colors.DARK_TEXT }]}>📜 Fitness Goal Phase Logs</Text>
-          <Text style={styles.cardDesc}>Audited timeline of fitness phase switches recorded by the Django backend.</Text>
+          <Text style={styles.cardDesc}>Audited timeline of fitness phase switches recorded by the backend.</Text>
           <View style={styles.separator} />
 
           {loadingHistory ? (
@@ -709,6 +747,26 @@ const styles = StyleSheet.create({
   reminderToggleText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  fcmCheckButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    minHeight: 44,
+  },
+  fcmCheckButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  fcmStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 14,
+    textAlign: 'center',
   },
   subHeadingLabel: {
     fontSize: 12,

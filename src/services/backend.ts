@@ -239,4 +239,35 @@ export const notificationsApi = {
       data: { token },
     });
   },
+
+  checkHealth() {
+    return api.get<{
+      success: boolean;
+      data: {
+        firebase_configured: boolean;
+        credentials_file_exists: boolean;
+        credentials_path: string;
+        resolved_credentials_path: string;
+        user_tokens_count: number;
+        active_tokens_count: number;
+        healthy: boolean;
+      };
+    }>(apiEndpoints.FCM_HEALTH);
+  },
+
+  sendTestNotification(payload?: { title?: string; body?: string }) {
+    return api.post<{
+      success: boolean;
+      message: string;
+      tokens_count: number;
+    }>(apiEndpoints.TEST_NOTIFICATION, payload || {});
+  },
+
+  listTokens() {
+    return api.get<{
+      success: boolean;
+      count: number;
+      data: DeviceToken[];
+    }>(apiEndpoints.LIST_TOKENS);
+  },
 };

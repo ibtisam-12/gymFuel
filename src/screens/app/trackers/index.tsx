@@ -231,7 +231,7 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
     <View style={[styles.root, { backgroundColor: colors.BACKGROUND }]}>
       <View style={[styles.header, { borderBottomColor: colors.BORDER, paddingTop: headerTopPadding }]}>
         <Text style={[styles.headerTitle, { color: colors.DARK_TEXT }]}>Daily Trackers</Text>
-        <Text style={styles.headerSubtitle}>Hydration, steps, meals, and summaries from Django</Text>
+        <Text style={styles.headerSubtitle}>Hydration, steps, meals, and summaries</Text>
       </View>
 
       <ScrollView

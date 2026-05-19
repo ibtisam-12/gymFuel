@@ -39,6 +39,9 @@ const apiEndpoints = {
   // Notifications (Push tokens registration)
   DEVICE_REGISTER: '/notifications/device/register/',
   DEVICE_DEREGISTER: '/notifications/device/deregister/',
+  FCM_HEALTH: '/notifications/health/',
+  TEST_NOTIFICATION: '/notifications/test/',
+  LIST_TOKENS: '/notifications/tokens/',
 
   // Water Reminder Settings
   WATER_REMINDER_SETTINGS: '/water/reminder-settings/',

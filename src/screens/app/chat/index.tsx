@@ -318,7 +318,7 @@ const AIChatScreen: React.FC<BottomTabScreen<'AIChat'>> = ({ route, navigation }
       <View style={[styles.header, { borderBottomColor: colors.BORDER, paddingTop: headerTopPadding }]}>
         <View style={styles.headerTitleContainer}>
           <Text style={[styles.headerTitle, { color: colors.DARK_TEXT }]}>GymFuel AI Coach</Text>
-          <Text style={styles.headerSubtitle}>Personalized LangChain diet recommender</Text>
+          <Text style={styles.headerSubtitle}>Personalized AI diet recommender</Text>
         </View>
 
         <TouchableOpacity
