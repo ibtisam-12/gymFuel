@@ -34,7 +34,6 @@ import {
   WaterSummary,
 } from '../../../types';
 import { decimalInput, isInRange, isNonEmptyText, onlyDigits } from '../../../utils/validation';
-
 const normalizeList = <T,>(payload: unknown): T[] => {
   if (Array.isArray(payload)) {
     return payload;
@@ -54,7 +53,6 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
   const [waterAmount, setWaterAmount] = useState('500');
-  const [stepCount, setStepCount] = useState('');
   const [mealName, setMealName] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
@@ -100,6 +98,8 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
       if (todayStepsRes.success && todayStepsRes.data) {
         setStepsSummary(todayStepsRes.data);
         dispatch(updateTodaySteps(todayStepsRes.data.total_steps));
+      } else {
+        dispatch(updateTodaySteps(0));
       }
       if (mealsRes.success && mealsRes.data) {
         const normalizedMeals = normalizeList<MealLog>(mealsRes.data);
@@ -146,21 +146,6 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
       refreshTrackers();
     } else {
       Alert.alert('Delete Failed', res.error || 'Could not delete water log.');
-    }
-  };
-
-  const handleLogSteps = async () => {
-    const steps = parseInt(stepCount, 10);
-    if (!isInRange(stepCount, 1, 100000)) {
-      Alert.alert('Invalid Steps', 'Enter steps between 1 and 100,000.');
-      return;
-    }
-    const res = await trackersApi.logSteps({ step_count: steps, source: 'manual' });
-    if (res.success) {
-      setStepCount('');
-      refreshTrackers();
-    } else {
-      Alert.alert('Steps Sync Failed', res.error || 'Could not save steps.');
     }
   };
 
@@ -296,23 +281,6 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
         </View>
 
         <View style={[globalStyles.card, styles.sectionCard]}>
-          <Text style={[styles.cardTitle, { color: colors.DARK_TEXT }]}>Sync Steps</Text>
-          <View style={styles.inlineRow}>
-            <TextInput
-              placeholder="1200"
-              placeholderTextColor={isDark ? '#4A5568' : '#A0AEC0'}
-              keyboardType="numeric"
-              style={[inputStyle, styles.inlineInput]}
-              value={stepCount}
-              onChangeText={(value) => setStepCount(onlyDigits(value).slice(0, 6))}
-            />
-            <TouchableOpacity onPress={handleLogSteps} style={[styles.actionButton, { backgroundColor: colors.INFO }]}>
-              <Text style={styles.actionText}>Sync</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={[globalStyles.card, styles.sectionCard]}>
           <Text style={[styles.cardTitle, { color: colors.DARK_TEXT }]}>Log Meal</Text>
           <TextInput
             placeholder="Chicken oats bowl"
@@ -335,7 +303,9 @@ const TrackersScreen: React.FC<BottomTabScreen<'Trackers'>> = () => {
 
         <View style={[globalStyles.card, styles.sectionCard, styles.lastCard]}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: colors.DARK_TEXT }]}>Today's Meals</Text>
+            <Text style={[styles.cardTitle, { color: colors.DARK_TEXT }]}>
+              {"Today's Meals"}
+            </Text>
             {refreshing && <ActivityIndicator size="small" color={colors.PRIMARY} />}
           </View>
           <Text style={styles.summaryFoot}>
@@ -426,6 +396,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     marginBottom: 12,
+  },
+  sectionHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+    fontWeight: '500',
   },
   inlineRow: {
     flexDirection: 'row',

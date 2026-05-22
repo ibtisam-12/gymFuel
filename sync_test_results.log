@@ -1,0 +1,63 @@
+GymFuel sync test started 2026-05-22T14:06:27.163Z
+
+[1m[36m================================================================[0m
+[1m[36m      GYMFUEL AI FRONTEND-BACKEND SYNC VALIDATION SUITE        [0m
+[1m[36m================================================================[0m
+Targeting backend at: [1mhttps://backend-gymfuel-2.onrender.com/api/v1[0m
+Timeout: 120000ms | Mode: existing user
+
+[33mWarming up Render (GET /healthz)...[0m
+[32m[PASS] Backend health check OK.[0m
+
+[1m[34m=== TEST 1: Frontend User Registration (SignUpScreen) ===[0m
+[33m[SKIP] Using existing verified user: ibbi@gmail.com (pass --fresh-signup to test register)[0m
+
+[1m[34m=== TEST 2: Secure JWT Login & Token Acquisition ===[0m
+[32m[PASS] JWT access token obtained.[0m
+[32m[PASS] Identity verified. User ID: 1 (ibbi@gmail.com)[0m
+
+[1m[34m=== TEST 3: Form Onboarding Setup (Upgraded Variables) ===[0m
+[32m[PASS] Profile already exists; using existing profile (400 on create is OK).[0m
+   BMI: 25.93 | TDEE: 2868 kcal/day | Daily budget: PKR 800
+
+[1m[34m=== TEST 4: Dashboard Widgets & Targets Calculations ===[0m
+[32m[PASS] Dashboard hydrated.[0m
+   Calories: 420 / 2868 | Budget left: PKR 23600
+
+[1m[34m=== TEST 5: Hydration Tracker Logs Lifecycle ===[0m
+[32m[PASS] Logged 500ml water. Entry ID: 12[0m
+[32m[PASS] Water entry visible in today ledger.[0m
+[32m[PASS] Deleted water entry 12.[0m
+
+[1m[34m=== TEST 6: Steps Synchronization (Native Pedometer SDK) ===[0m
+[32m[PASS] Synced +350 steps. Entry ID: 3[0m
+[32m[PASS] Steps list endpoint OK.[0m
+
+[1m[34m=== TEST 7: Nutrition Meal Logs Lifecycle ===[0m
+[32m[PASS] Logged meal. Meal ID: 18[0m
+[32m[PASS] Meal summary computed.[0m
+   Protein: 72g | Carbs: 75g | Fats: 21g
+[32m[PASS] Deleted meal 18.[0m
+
+[1m[34m=== TEST 8: Dynamic Profile Metrics & Mifflin-St Jeor Update ===[0m
+[32m[PASS] Profile metrics updated.[0m
+   BMI: 25.93 | TDEE: 2868 | Daily budget: PKR 800
+
+[1m[34m=== TEST 9: Fitness Goal Phase Transitions ===[0m
+[32m[PASS] Phase transition OK. bulking -> bulking[0m
+[32m[PASS] Phase history entries: 0[0m
+
+[1m[34m=== TEST 10: AI Coach Pipeline & Medical Pre-Filters ===[0m
+[33m   Sending hazard query for guardrail check (may take 30-90s on Render)...[0m
+[33m   Retry 1/1 after 8000ms (503)...[0m
+[33m[SKIP] AI not configured on server (503). Set ANTHROPIC_API_KEY on Render and redeploy.[0m
+   Response Code: 503 (Render/hosting — not an app sync bug)
+[32m[PASS] AI memory cleared.[0m
+
+[1m================================================================[0m
+[1mPassed: 17 | Failed: 0[0m
+Log file: C:\Users\IBBI\Desktop\gym fuel\gymfuel\sync_test_results.log
+[1m================================================================[0m
+
+[1m[32mALL SYNC TESTS PASSED[0m
+

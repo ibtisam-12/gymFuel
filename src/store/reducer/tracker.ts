@@ -9,6 +9,10 @@ interface TrackerState {
   waterLogs: WaterLog[];
   stepLogs: StepLog[];
   loading: boolean;
+  stepSensorActive: boolean;
+  stepSensorSteps: number;
+  /** Today's step total (API + sensor); always safe to read for UI */
+  todaySteps: number;
 }
 
 const initialState: TrackerState = {
@@ -17,6 +21,9 @@ const initialState: TrackerState = {
   waterLogs: [],
   stepLogs: [],
   loading: false,
+  stepSensorActive: false,
+  stepSensorSteps: 0,
+  todaySteps: 0,
 };
 
 const trackerSlice = createSlice({
@@ -56,8 +63,19 @@ const trackerSlice = createSlice({
       state.stepLogs = action.payload;
     },
     updateTodaySteps(state, action: PayloadAction<number>) {
+      state.todaySteps = action.payload;
       if (state.dashboard) {
         state.dashboard.steps.current = action.payload;
+      }
+    },
+    setStepSensorState(
+      state,
+      action: PayloadAction<{ active: boolean; steps: number }>
+    ) {
+      state.stepSensorActive = action.payload.active;
+      state.stepSensorSteps = action.payload.steps;
+      if (state.dashboard && action.payload.steps >= 0) {
+        state.dashboard.steps.current = action.payload.steps;
       }
     },
     removeMeal(state, action: PayloadAction<number>) {
@@ -91,6 +109,18 @@ const trackerSlice = createSlice({
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
     },
+    /** Ensures step-sensor fields exist after hot reload or older persisted state */
+    ensureStepSensorFields(state) {
+      if (state.stepSensorActive === undefined) {
+        state.stepSensorActive = false;
+      }
+      if (state.stepSensorSteps === undefined) {
+        state.stepSensorSteps = 0;
+      }
+      if (state.todaySteps === undefined) {
+        state.todaySteps = 0;
+      }
+    },
   },
 });
 
@@ -102,9 +132,11 @@ export const {
   addWaterLog,
   setStepLogs,
   updateTodaySteps,
+  setStepSensorState,
   removeMeal,
   removeWaterLog,
   setLoading,
+  ensureStepSensorFields,
 } = trackerSlice.actions;
 
 export default trackerSlice.reducer;

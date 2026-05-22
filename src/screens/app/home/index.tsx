@@ -1,13 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, Dimensions, Modal, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+  Dimensions,
+} from 'react-native';
 import { Text } from '../../../utils/elements';
 import { BottomTabScreen } from '../../../types/navigation.types';
 import useTheme from '../../../styles/theme';
-import { useAppDispatch } from '../../../store/store';
-import { setDashboardData, setLoading, transformDashboardResponse } from '../../../store/reducer/tracker';
-import { useTrackerStore } from '../../../store/reducer/tracker';
+import { useAppDispatch, useAppSelector } from '../../../store/store';
+import {
+  setDashboardData,
+  setLoading,
+  transformDashboardResponse,
+  updateTodaySteps,
+  useTrackerStore,
+} from '../../../store/reducer/tracker';
 import { useProfileStore } from '../../../store/reducer/profile';
 import { profileApi, trackersApi } from '../../../services/backend';
+import StepCounterPanel from '../../../components/StepCounterPanel';
 import Svg, { Circle, Defs, LinearGradient, Stop, Path, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -143,26 +157,24 @@ const WeightTrendChart = ({ colors, globalStyles }: any) => {
 };
 
 const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation }) => {
-  const { colors, globalStyles, isDark } = useTheme();
+  const { colors, globalStyles } = useTheme();
   const insets = useSafeAreaInsets();
   const scrollTopPadding = Math.max(insets.top + 16, 16);
   const dispatch = useAppDispatch();
   const { dashboard, loading } = useTrackerStore();
+  const stepSensorSteps = useAppSelector((s) => s.tracker.stepSensorSteps ?? 0);
+  const todaySteps = useAppSelector((s) => s.tracker.todaySteps ?? 0);
   const { data: profile } = useProfileStore();
   const [localLoading, setLocalLoading] = useState(false);
 
-  // 🔌 Native Pedometer Simulator State
-  const [isSensorSynced, setIsSensorSynced] = useState(false);
-  const [showSensorModal, setShowSensorModal] = useState(false);
-
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     setLocalLoading(true);
     dispatch(setLoading(true));
     try {
-      // Parallel loading of profile dashboard data and today's meal summaries
-      const [dashRes, mealRes] = await Promise.all([
+      const [dashRes, mealRes, stepsRes] = await Promise.all([
         profileApi.dashboard(),
         trackersApi.mealSummary(),
+        trackersApi.todaySteps(),
       ]);
 
       if (dashRes.success && dashRes.data) {
@@ -170,7 +182,14 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
           dashRes.data,
           mealRes.success ? mealRes.data : null
         );
+        if (stepsRes.success && stepsRes.data) {
+          transformed.steps.current = stepsRes.data.total_steps;
+          transformed.steps.goal = stepsRes.data.goal || transformed.steps.goal;
+          dispatch(updateTodaySteps(stepsRes.data.total_steps));
+        }
         dispatch(setDashboardData(transformed));
+      } else if (stepsRes.success && stepsRes.data) {
+        dispatch(updateTodaySteps(stepsRes.data.total_steps));
       }
     } catch (error) {
       console.error('Error fetching dashboard summary:', error);
@@ -178,69 +197,13 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
       dispatch(setLoading(false));
       setLocalLoading(false);
     }
-  };
+  }, [dispatch]);
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  // 🏃 Simulated Physical Accelerometer Steps Sync Ticker
-  useEffect(() => {
-    if (!isSensorSynced) return;
-
-    const interval = setInterval(async () => {
-      // Add random 8-15 steps per interval
-      const addedSteps = Math.floor(Math.random() * 8) + 8;
-      
-      // Update Redux state directly for instant, gorgeous UI progress recalculations!
-      if (dashboard) {
-        const currentSteps = dashboard.steps?.current || 0;
-        const updatedSteps = currentSteps + addedSteps;
-        
-        dispatch(setDashboardData({
-          ...dashboard,
-          steps: {
-            ...dashboard.steps,
-            current: updatedSteps
-          }
-        }));
-
-        // Send a quick background POST to the Django Steps app every ~10 seconds to persist logs
-        if (Math.random() > 0.6) {
-          try {
-            await trackersApi.logSteps({
-              step_count: addedSteps,
-              source: 'googlefit'
-            });
-          } catch (e) {
-            console.log('Background steps post skipped:', e);
-          }
-        }
-      }
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, [isSensorSynced, dashboard]);
-
-  const handleQuickPrompt = (promptText: string) => {
-    navigation.navigate('AIChat', { initialQuery: promptText });
-  };
-
-  // 🔌 Handle SDK Sync Toggle
-  const handleToggleSensor = () => {
-    if (isSensorSynced) {
-      setIsSensorSynced(false);
-      Alert.alert('🔌 Disconnected physical pedometer sensors.');
-    } else {
-      setShowSensorModal(true);
-    }
-  };
-
-  const authorizeSensors = () => {
-    setShowSensorModal(false);
-    setIsSensorSynced(true);
-    Alert.alert('✅ Native sensor sync active! Linked via Google Fit / HealthKit.');
-  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboard();
+    }, [fetchDashboard])
+  );
 
   // Safe defaults if dashboard data is not yet resolved
   const caloriesConsumed = dashboard?.calories?.consumed || 0;
@@ -248,7 +211,10 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
   const caloriesRemaining = dashboard?.calories?.remaining || 2000;
   const calPercent = Math.min(100, Math.round((caloriesConsumed / caloriesTarget) * 100));
 
-  const stepsCurrent = dashboard?.steps?.current || 0;
+  const stepsFromDashboard = dashboard?.steps?.current ?? 0;
+  // Use todaySteps from Redux as the primary source (updated from API and manual logs)
+  // Fall back to sensor steps or dashboard cache if todaySteps is 0
+  const stepsCurrent = Math.max(todaySteps, stepSensorSteps, stepsFromDashboard);
   const stepsGoal = dashboard?.steps?.goal || 10000;
   const stepPercent = Math.min(100, (stepsCurrent / stepsGoal) * 100);
 
@@ -262,12 +228,6 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
   const budgetPercent = Math.min(100, (budgetSpent / budgetTotal) * 100);
 
   const activePhase = (dashboard?.current_phase || profile?.fitness_phase || 'maintenance').toUpperCase();
-
-  const prompts = [
-    { text: '🥗 Rs. 200 high-protein lunch', val: 'Suggest a Rs. 200 high-protein lunch based on Pakistani food items.' },
-    { text: '🍌 Rs. 100 bulking snack ideas', val: 'Give me meal/snack recommendations under PKR 100 that support my bulking phase.' },
-    { text: '🥚 Easy recovery breakfast', val: 'What is a cheap, high-protein breakfast recipe suitable for recovery?' },
-  ];
 
   return (
     <View style={[styles.rootContainer, { backgroundColor: colors.BACKGROUND }]}>
@@ -287,24 +247,6 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
             <Text style={[styles.phaseText, { color: colors.PRIMARY }]}>{activePhase}</Text>
           </View>
         </View>
-
-        {/* AI Chat entry — primary way to open meal coach */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('AIChat')}
-          style={[globalStyles.card, styles.chatEntryCard, { borderColor: colors.PRIMARY + '40' }]}
-        >
-          <View style={[styles.chatEntryIcon, { backgroundColor: colors.PRIMARY + '18' }]}>
-            <Text style={styles.chatEntryEmoji}>🤖</Text>
-          </View>
-          <View style={styles.chatEntryText}>
-            <Text style={[styles.chatEntryTitle, { color: colors.DARK_TEXT }]}>AI Meal Coach Chat</Text>
-            <Text style={[styles.chatEntrySubtitle, { color: colors.SUB_TEXT }]}>
-              Tap to ask for Pakistani meals, macros, and PKR budget plans
-            </Text>
-          </View>
-          <Text style={[styles.chatEntryArrow, { color: colors.PRIMARY }]}>→</Text>
-        </TouchableOpacity>
 
         {/* Caloric Ring Summary Card */}
         <View style={[globalStyles.card, styles.ringCard]}>
@@ -344,22 +286,6 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
         {/* 📈 Weight Trend Chart Card (Upgraded spec) */}
         <WeightTrendChart colors={colors} globalStyles={globalStyles} />
 
-        {/* Quick AI Prompts */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.DARK_TEXT }]}>Ask GymFuel AI</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptList}>
-            {prompts.map((p, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => handleQuickPrompt(p.val)}
-                style={[styles.promptChip, { borderColor: colors.BORDER, backgroundColor: colors.CARD }]}
-              >
-                <Text style={[styles.promptChipText, { color: colors.PRIMARY }]}>{p.text}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
         {/* Steps & Water Grid */}
         <View style={styles.statsGrid}>
           {/* Steps Card */}
@@ -368,7 +294,7 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
               <Text style={styles.statEmoji}>👟</Text>
               <Text style={styles.statPercent}>{Math.round(stepPercent)}%</Text>
             </View>
-            <Text style={styles.statLabel}>Steps Logs</Text>
+            <Text style={styles.statLabel}>Steps today</Text>
             <Text style={[styles.statValue, { color: colors.DARK_TEXT }]}>{stepsCurrent.toLocaleString()}</Text>
             <Text style={styles.statGoalLabel}>Goal: {stepsGoal}</Text>
             <View style={styles.progressTrack}>
@@ -391,39 +317,14 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
           </View>
         </View>
 
-        {/* 🔌 Native Pedometer SDK Integration Card (Upgraded spec) */}
-        <View style={[globalStyles.card, styles.sensorCard]}>
-          <View style={styles.sensorHeader}>
-            <Text style={styles.sensorIcon}>🔌</Text>
-            <View style={styles.sensorInfo}>
-              <Text style={[styles.sensorTitle, { color: colors.DARK_TEXT }]}>Native Pedometer SDK</Text>
-              <Text style={styles.sensorSubtitle}>
-                {isSensorSynced ? '🟢 Synced via Google Fit / HealthKit' : '🔴 Physical sensors offline'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleToggleSensor}
-              style={[
-                styles.sensorToggleBtn,
-                { backgroundColor: isSensorSynced ? colors.SUCCESS : colors.PRIMARY }
-              ]}
-            >
-              <Text style={styles.sensorToggleText}>
-                {isSensorSynced ? 'Active Sync' : 'Link Sensor'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {isSensorSynced && (
-            <Text style={styles.simulationAlert}>
-              ⚡ Simulated motion active! Accel sensors streaming step increments in real time...
-            </Text>
-          )}
-        </View>
+        <StepCounterPanel />
 
         {/* Nutritional Macros Breakdown */}
         {dashboard?.macros && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.DARK_TEXT }]}>Today's Nutritional Macros</Text>
+            <Text style={[styles.sectionTitle, { color: colors.DARK_TEXT }]}>
+              {"Today's Nutritional Macros"}
+            </Text>
             <View style={[globalStyles.card, styles.macrosCard]}>
               {/* Protein */}
               <View style={styles.macroRow}>
@@ -533,39 +434,6 @@ const DashboardScreen: React.FC<BottomTabScreen<'Dashboard'>> = ({ navigation })
         </View>
       </ScrollView>
 
-      {/* Modal for native sensors simulation permission */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showSensorModal}
-        onRequestClose={() => setShowSensorModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1A202C' : '#FFFFFF' }]}>
-            <Text style={styles.modalEmoji}>👟📲</Text>
-            <Text style={[styles.modalTitle, { color: colors.DARK_TEXT }]}>
-              Authorize Pedometer Access
-            </Text>
-            <Text style={styles.modalMessage}>
-              GymFuel AI requests permissions to connect with your mobile device's native pedometer sensors (Apple HealthKit / Google Fit API) to synchronize your steps, monitor daily calorie adjustments, and fine-tune nutritional macros in real-time.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={() => setShowSensorModal(false)}
-                style={[styles.modalBtn, { borderColor: colors.BORDER, borderWidth: 1 }]}
-              >
-                <Text style={{ color: colors.SUB_TEXT, fontWeight: '700' }}>Deny</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={authorizeSensors}
-                style={[styles.modalBtn, { backgroundColor: colors.PRIMARY }]}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Allow Access</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -577,43 +445,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 110,
-  },
-  chatEntryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-  },
-  chatEntryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  chatEntryEmoji: {
-    fontSize: 24,
-  },
-  chatEntryText: {
-    flex: 1,
-  },
-  chatEntryTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  chatEntrySubtitle: {
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  chatEntryArrow: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginLeft: 8,
   },
   header: {
     flexDirection: 'row',
@@ -715,20 +546,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 12,
-  },
-  promptList: {
-    paddingVertical: 4,
-  },
-  promptChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginRight: 10,
-  },
-  promptChipText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -869,95 +686,6 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     marginTop: 6,
-  },
-  // 🔌 Pedometer Sensor Card Styles
-  sensorCard: {
-    padding: 16,
-    marginBottom: 24,
-  },
-  sensorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sensorIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  sensorInfo: {
-    flex: 1,
-  },
-  sensorTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  sensorSubtitle: {
-    fontSize: 11,
-    color: '#8A8D9F',
-    marginTop: 2,
-  },
-  sensorToggleBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  sensorToggleText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 11,
-  },
-  simulationAlert: {
-    fontSize: 10,
-    color: '#3182CE',
-    backgroundColor: '#3182CE10',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 12,
-    fontWeight: '600',
-    lineHeight: 14,
-  },
-  // Permission Modal Styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-  },
-  modalEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 12,
-    color: '#718096',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 24,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  modalBtn: {
-    width: '48%',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

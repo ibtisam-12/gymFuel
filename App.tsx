@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from './src/navigators/root';
 import Toast from 'react-native-toast-message';
 import { usePushNotifications } from './src/services/pushNotifications';
+import { StepSensorProvider } from './src/context/StepSensorContext';
 
 const NotificationBootstrap = () => {
   const token = useAppSelector((state: RootState) => state.auth.token);
@@ -22,17 +23,19 @@ function App(): React.JSX.Element {
   return (
     <Provider store={store}>
       <NavigationContainer>
-        <NotificationBootstrap />
-        {/* Status bar styled elegantly for OLED Dark Mode */}
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#0F1015"
-        />
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0F1015' }}>
-          <RootNavigator />
-        </SafeAreaView>
+        <StepSensorProvider>
+          <NotificationBootstrap />
+          {/* Status bar styled elegantly for OLED Dark Mode */}
+          <StatusBar
+            barStyle="light-content"
+            backgroundColor="#0F1015"
+          />
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#0F1015' }}>
+            <RootNavigator />
+          </SafeAreaView>
+          <Toast />
+        </StepSensorProvider>
       </NavigationContainer>
-      <Toast />
     </Provider>
   );
 }

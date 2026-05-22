@@ -1,0 +1,64 @@
+GymFuel sync test started 2026-05-22T13:29:30.403Z
+
+================================================================
+      GYMFUEL AI FRONTEND-BACKEND SYNC VALIDATION SUITE        
+================================================================
+Targeting backend at: https://backend-gymfuel-2.onrender.com/api/v1
+Timeout: 120000ms | Mode: existing user
+
+Warming up Render (GET /healthz)...
+[PASS] Backend health check OK.
+
+=== TEST 1: Frontend User Registration (SignUpScreen) ===
+[SKIP] Using existing verified user: ibbi@gmail.com (pass --fresh-signup to test register)
+
+=== TEST 2: Secure JWT Login & Token Acquisition ===
+[PASS] JWT access token obtained.
+[PASS] Identity verified. User ID: 1 (ibbi@gmail.com)
+
+=== TEST 3: Form Onboarding Setup (Upgraded Variables) ===
+[PASS] Profile already exists; using existing profile (400 on create is OK).
+   BMI: 23.02 | TDEE: 2725 kcal/day | Daily budget: PKR 1000
+
+=== TEST 4: Dashboard Widgets & Targets Calculations ===
+[PASS] Dashboard hydrated.
+   Calories: 420 / 2725 | Budget left: PKR 29600
+
+=== TEST 5: Hydration Tracker Logs Lifecycle ===
+[PASS] Logged 500ml water. Entry ID: 8
+[PASS] Water entry visible in today ledger.
+[PASS] Deleted water entry 8.
+
+=== TEST 6: Steps Synchronization (Native Pedometer SDK) ===
+[PASS] Synced +350 steps. Entry ID: 3
+[PASS] Steps list endpoint OK.
+
+=== TEST 7: Nutrition Meal Logs Lifecycle ===
+[PASS] Logged meal. Meal ID: 14
+[PASS] Meal summary computed.
+   Protein: 72g | Carbs: 75g | Fats: 21g
+[PASS] Deleted meal 14.
+
+=== TEST 8: Dynamic Profile Metrics & Mifflin-St Jeor Update ===
+[PASS] Profile metrics updated.
+   BMI: 25.93 | TDEE: 2868 | Daily budget: PKR 800
+
+=== TEST 9: Fitness Goal Phase Transitions ===
+[PASS] Phase transition OK. bulking -> bulking
+[PASS] Phase history entries: 0
+
+=== TEST 10: AI Coach Pipeline & Medical Pre-Filters ===
+   Sending hazard query for guardrail check...
+[FAIL] AI pre-filter safety guardrail failed.
+   Response Code: 502
+   Response Detail: ""
+[FAIL] Failed to clear AI memory.
+   Response Code: 502
+   Response Detail: "<!DOCTYPE html>... [Render 502 HTML error page, ~220KB — see sync_test_results.log line 57]"
+
+================================================================
+Passed: 16 | Failed: 2
+Log file: C:\Users\IBBI\Desktop\gym fuel\gymfuel\sync_test_results.log
+================================================================
+
+EXIT_CODE=1

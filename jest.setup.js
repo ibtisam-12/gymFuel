@@ -23,3 +23,10 @@ jest.mock('@react-native-firebase/messaging', () => ({
 }));
 
 jest.mock('@react-native-firebase/app', () => ({}));
+
+jest.mock('@dongminyu/react-native-step-counter', () => ({
+  isStepCountingSupported: jest.fn(async () => ({ supported: true, granted: true })),
+  startStepCounterUpdate: jest.fn(() => ({ remove: jest.fn() })),
+  stopStepCounterUpdate: jest.fn(),
+  parseStepData: jest.fn((data) => data),
+}));
